@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- DataTables desde CDN -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <meta charset="UTF-8">
+    <title>{{ title if title else 'Sistema de Registro' }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="d-flex">
+        <!-- Menú lateral -->
+        <div class="bg-dark text-white p-3" style="width: 250px; height: 100vh;">
+            <h3 class="text-center">📋 Menú</h3>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/">🏠 Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/personal">👤 Ingreso Personal</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/vehicular">🚗 Ingreso Vehicular</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/reportes">📊 Reportes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/configuracion">⚙️ Configuración</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Contenido principal -->
+        <div class="container-fluid p-4">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</body>
+</html>
+
+<h5>Sede actual: 
+    {% if session['sede_id'] == 1 %} Argentina 3090
+    {% elif session['sede_id'] == 2 %} Argentina 4140
+    {% else %} No definida {% endif %}
+</h5>
+
+<!-- Botón de Cerrar Sesión -->
+<a href="{{ url_for('admin.logout') }}" class="btn btn-danger btn-sm">🚪 Cerrar Sesión</a>

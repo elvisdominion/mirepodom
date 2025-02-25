@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📄 Registro de Ingreso de Personal y Visitas</h2>
+
+<!-- Escaneo de DNI -->
+<div class="form-group">
+    <label for="dni">🔍 Escanear o Ingresar DNI:</label>
+    <input type="text" id="dni" class="form-control" placeholder="Ingrese DNI" autofocus>
+</div>
+
+<!-- Formulario para Registrar Visita -->
+<div id="formularioVisita" style="display: none;" class="mt-4">
+    <h4>📝 Registrar Visita</h4>
+    <input type="text" id="nombre_visita" class="form-control mb-2" placeholder="Nombre y Apellido del Visitante">
+    <!-- Campo de búsqueda del autorizador -->
+    <label for="autorizador_visita">Autorizado por:</label>
+    <input type="text" id="autorizador_visita" class="form-control mb-2" placeholder="Buscar por nombre o DNI" oninput="buscarAutorizador()">
+    <ul id="sugerencias_autorizador" class="list-group"></ul>
+
+    <button onclick="registrarVisita()" class="btn btn-primary mt-2">📝 Registrar Visita</button>
+    <button onclick="cancelarVisita()" class="btn btn-secondary mt-2">❌ Cancelar</button>
+</div>
+
+<!-- Tabla de Registros -->
+<h3 class="mt-4">📊 Ingresos de Hoy</h3>
+<table id="tablaIngresos" class="display" style="width:100%">
+    <thead>
+        <tr>
+            <th>DNI</th>
+            <th>Nombre</th>
+            <th>Área</th>
+            <th>Autorizado por</th>
+            <th>Sede</th> <!-- Nueva columna sede -->
+            <th>Fecha y Hora</th>
+            <th>Tipo</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<!-- Estilos y Scripts -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- JavaScript -->
+<script>
+$(document).ready(function() {
+    cargarTabla();
+    $("#dni").on("keypress", function(e) {
+        if (e.which === 13) {
+            verificarDNI();
+        }
+    });
+});
+
+// Cargar DataTable con sede
+function cargarTabla() {
+    $('#tablaIngresos').DataTable({
+        destroy: true,
+        ajax: {
+            url: "/personal/get_ingresos",
+            dataSrc: ""
+        },
+        order: [[5, "desc"]],  // Orden por fecha reciente
+        columns: [
+            { data: "dni" },
+            { data: "nombres_apellidos" },
+            { data: "area" },
+            { data: "nombre_autoriza" },
+            { 
+                data: "sede_id",
+                render: function(data) {
+                    return data === 1 ? "Argentina 3090" : (data === 2 ? "Argentina 4140" : "N/A");
+                }
+            },
+            { data: "fecha_hora_ingreso" },
+            { 
+                data: "tipo_ingreso",
+                render: function(data) {
+                    return data === "PERSONAL" 
+                        ? `<span class="badge bg-success">Personal</span>` 
+                        : `<span class="badge bg-warning">Visita</span>`;
+                }
+            }
+        ],
+        pageLength: 10,
+        lengthChange: true,
+        searching: true,
+        ordering: true,
+        info: true,
+        language: {
+            url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/Spanish.json"
+        }
+    });
+}
+
+// Verificar DNI y registrar ingreso
+function verificarDNI() {
+    const dni = document.getElementById("dni").value;
+    if (!dni) return;
+
+    fetch("/personal/verificar_dni", {
+        method: "POST",
+        body: JSON.stringify({ dni: dni }),
+        headers: { "Content-Type": "application/json" }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "personal") {
+            mostrarAviso(`✅ Ingreso registrado: ${data.nombre}`);
+            limpiarDNI();
+            cargarTabla();
+        } else if (data.status === "ya_registrado") {
+            mostrarAviso(data.message, "warning");
+            limpiarDNI();
+        } else if (data.status === "no_encontrado") {
+            // Preguntar si desea registrar como visita
+            Swal.fire({
+                title: "DNI no encontrado",
+                text: "¿Registrar como visita?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Sí, Registrar",
+                cancelButtonText: "No"
+            }).then(result => {
+                if (result.isConfirmed) {
+                    document.getElementById("formularioVisita").style.display = "block";
+                    document.getElementById("nombre_visita").focus();
+                } else {
+                    limpiarDNI();
+                }
+            });
+        }
+    });
+}
+
+
+// Registrar visita
+function registrarVisita() {
+    const dni = document.getElementById("dni").value;
+    const nombre = document.getElementById("nombre_visita").value;
+    const autorizador = document.getElementById("autorizador_visita").value;
+
+    if (!nombre || !autorizador) {
+        mostrarAviso("⚠️ Por favor, complete todos los campos.", "warning");
+        return;
+    }
+
+    fetch("/personal/registrar_visita", {
+        method: "POST",
+        body: JSON.stringify({ dni: dni, nombre: nombre, autorizador: autorizador }),
+        headers: { "Content-Type": "application/json" }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "visita_registrada") {
+            mostrarAviso("✅ Visita registrada correctamente.");
+            document.getElementById("formularioVisita").style.display = "none";
+            limpiarDNI();
+            cargarTabla();
+        } else {
+            mostrarAviso("❌ Error al registrar la visita.", "error");
+        }
+    });
+}
+
+// Búsqueda interactiva de autorizador
+function buscarAutorizador() {
+    const query = document.getElementById("autorizador_visita").value;
+    const sugerencias = document.getElementById("sugerencias_autorizador");
+
+    if (query.length < 2) {
+        sugerencias.innerHTML = "";
+        return;
+    }
+
+    // Verifica que la URL incluya el prefijo '/personal'
+    fetch(`/personal/buscar_autorizador?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            sugerencias.innerHTML = "";
+
+            if (data.length > 0) {
+                data.forEach(persona => {
+                    const item = document.createElement("li");
+                    item.classList.add("list-group-item", "list-group-item-action");
+                    item.textContent = `${persona.apellidos_nombres} - DNI: ${persona.dni}`;
+                    item.onclick = () => {
+                        document.getElementById("autorizador_visita").value = persona.apellidos_nombres;
+                        sugerencias.innerHTML = "";
+                    };
+                    sugerencias.appendChild(item);
+                });
+            } else {
+                sugerencias.innerHTML = '<li class="list-group-item">No se encontraron resultados</li>';
+            }
+        })
+        .catch(error => console.error('Error en la búsqueda de autorizador:', error));
+}
+
+
+// Mostrar aviso sin intervención manual
+function mostrarAviso(mensaje, icon = "success") {
+    Swal.fire({
+        title: mensaje,
+        icon: icon,
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3000
+    });
+}
+
+// Limpiar DNI y enfocar para el siguiente registro
+function limpiarDNI() {
+    document.getElementById("dni").value = "";
+    document.getElementById("dni").focus();
+}
+
+// Cancelar formulario de visita
+function cancelarVisita() {
+    document.getElementById("formularioVisita").style.display = "none";
+    limpiarDNI();
+}
+</script>
+{% endblock %}

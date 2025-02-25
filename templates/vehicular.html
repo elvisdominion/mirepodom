@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🚗 Registro de Ingreso Vehicular</h2>
+
+<form method="post" action="/vehicular/registrar">
+    <div class="form-group">
+        <label for="placa">Placa del Vehículo:</label>
+        <input type="text" name="placa" class="form-control" required placeholder="Ingrese la placa">
+    </div>
+    <button type="submit" class="btn btn-primary">Registrar Ingreso</button>
+</form>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📥 Importar Personal desde Excel</h2>
+
+<!-- Formulario para subir archivo -->
+<div class="card mt-3">
+    <div class="card-body">
+        <form id="formImportarPersonal" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file">Seleccionar archivo Excel (.xlsx):</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".xlsx" required>
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">📤 Importar Personal</button>
+        </form>
+        <div id="resultado" class="mt-3"></div>
+    </div>
+</div>
+
+<!-- Script para manejar la importación -->
+<script>
+document.getElementById("formImportarPersonal").onsubmit = async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    const response = await fetch("/configuracion/importar_personal", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await response.json();
+    const resultado = document.getElementById("resultado");
+
+    if (data.status === "success") {
+        resultado.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+    } else {
+        resultado.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+    }
+
+    setTimeout(() => resultado.innerHTML = '', 3000);
+};
+</script>
+{% endblock %}

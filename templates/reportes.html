@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>📊 Reporte de Ingresos</h2>
+
+<!-- Formulario de Búsqueda -->
+<div class="mb-4">
+    <label for="fecha_desde">📅 Fecha Desde:</label>
+    <input type="date" id="fecha_desde" class="form-control mb-2">
+
+    <label for="fecha_hasta">📅 Fecha Hasta:</label>
+    <input type="date" id="fecha_hasta" class="form-control mb-2">
+
+    <button onclick="buscarIngresos()" class="btn btn-primary">🔍 Buscar</button>
+</div>
+
+<!-- Tabla Interactiva -->
+<div id="resultados" style="display:none;">
+    <h3>📄 Resultados de la Búsqueda</h3>
+    <table id="tablaIngresos" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>DNI</th>
+                <th>Nombre</th>
+                <th>Área</th>
+                <th>Autorizado por</th>
+                <th>Sede</th>
+                <th>Fecha y Hora</th>
+                <th>Tipo</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <button onclick="descargarExcel()" class="btn btn-success mt-3">⬇️ Descargar Excel</button>
+</div>
+
+<!-- DataTables y Scripts -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+let datosReporte = [];
+
+function buscarIngresos() {
+    const desde = document.getElementById("fecha_desde").value;
+    const hasta = document.getElementById("fecha_hasta").value;
+
+    if (!desde || !hasta) {
+        Swal.fire("⚠️ Error", "Las fechas son obligatorias.", "warning");
+        return;
+    }
+
+    fetch(`/reportes/buscar_ingresos?desde=${desde}&hasta=${hasta}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                datosReporte = data;
+                mostrarTabla(data);
+                document.getElementById("resultados").style.display = "block";
+            } else {
+                Swal.fire("ℹ️ Sin resultados", "No se encontraron registros.", "info");
+                document.getElementById("resultados").style.display = "none";
+            }
+        })
+        .catch(error => console.error("Error al buscar ingresos:", error));
+}
+
+function mostrarTabla(data) {
+    if ($.fn.DataTable.isDataTable("#tablaIngresos")) {
+        $('#tablaIngresos').DataTable().destroy();
+    }
+
+    $('#tablaIngresos').DataTable({
+        data: data,
+        columns: [
+            { data: "dni" },
+            { data: "nombres_apellidos" },
+            { data: "area" },
+            { data: "nombre_autoriza" },
+            { data: "sede_id" },
+            { data: "fecha_hora_ingreso" },
+            { data: "tipo_ingreso", render: function(data) {
+                return data === "PERSONAL" 
+                    ? '<span class="badge bg-success">Personal</span>' 
+                    : '<span class="badge bg-warning">Visita</span>';
+            }}
+        ],
+        pageLength: 10,
+        language: { url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/Spanish.json" }
+    });
+}
+
+function descargarExcel() {
+    if (datosReporte.length === 0) {
+        Swal.fire("⚠️ Sin datos", "No hay datos para exportar.", "warning");
+        return;
+    }
+
+    fetch('/reportes/descargar_reporte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: datosReporte })
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        } else {
+            Swal.fire("❌ Error", "No se pudo generar el reporte.", "error");
+            return null;
+        }
+    })
+    .then(blob => {
+        if (blob) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Reporte_Ingresos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    });
+}
+// Cargar el dashboard al iniciar la página
+document.addEventListener('DOMContentLoaded', cargarDashboard);
+</script>
+
+{% endblock %}
+
+
+
